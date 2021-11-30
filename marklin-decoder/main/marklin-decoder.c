@@ -12,7 +12,7 @@
 #include "audio_example_file.h"
 
 
-#define ENABLE_PWM 1
+//#define ENABLE_PWM 1
 #define ENABLE_WAVE 1
 
 
@@ -38,19 +38,9 @@ void app_main()
     /* Initialize modules */
     MarklinDecoderInitialize();
 
-    //example_i2s_init();
-    //Odroid_InitializeAudio();
-
     uint32_t dutyValues[5] = {45, 55, 65, 75, 85};
     uint32_t dutyValues2[5] = {33, 45, 66, 99, 45};
     uint32_t dutyValues3[5] = {55, 45, 24, 88, 2};
-
-    //dac_output_enable(DAC_CHANNEL_1);
-    //dac_output_voltage(DAC_CHANNEL_1, 200);
-
-   //PwmSetValue(ePwmMotor, dutyValues[2], 1);
-
-
 
     while(1)
     {
@@ -61,10 +51,14 @@ void app_main()
 #endif
 
 #ifdef ENABLE_WAVE
-        DacPlayWaveForm(pcm1608s, sizeof(pcm1608s));
+        DacPlayWaveForm("LAUGHREP", pcm1608s, sizeof(pcm1608s), INF_REP);
 #endif
-        sleep(8);
+        sleep(16);
+        DacPlayWaveForm("LAUGHONE", pcm1608s, sizeof(pcm1608s), 0);
+        DacBreakRepeatPlayback();
 
+        sleep(32);
+    
         j++;
 
         if (j>4)
