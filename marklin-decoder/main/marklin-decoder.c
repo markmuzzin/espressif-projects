@@ -5,15 +5,12 @@
 #include <string.h>
 #include "pwm.h"
 #include "dac.h"
+#include "esp_err.h"
+#include "esp_log.h"
+#include "sounds.h"
 
 
-
-
-#include "audio_example_file.h"
-
-
-//#define ENABLE_PWM 1
-#define ENABLE_WAVE 1
+static const char *TAG = "LOCO-MAIN";
 
 
 static void MarklinDecoderInitialize(void)
@@ -23,12 +20,13 @@ static void MarklinDecoderInitialize(void)
     esp_chip_info(&chip_info);
     printf("Marklin-Decoder ESP-NOW with %d CPU cores\n, ", chip_info.cores);
 
-#ifdef ENABLE_PWM
     /* Initialize PWM */
     PwmInitialize();
-#endif
+    /* Initialize DAC */
+    DacInitialize();
+    /* Set WAV parameters */    
+    //DacSetWaveParameters(trainchug1);
 }
-
 
 
 void app_main()
@@ -38,33 +36,42 @@ void app_main()
     /* Initialize modules */
     MarklinDecoderInitialize();
 
-    uint32_t dutyValues[5] = {45, 55, 65, 75, 85};
-    uint32_t dutyValues2[5] = {33, 45, 66, 99, 45};
-    uint32_t dutyValues3[5] = {55, 45, 24, 88, 2};
+    uint32_t dutyValues[5] = {0, 35, 65, 75, 85};
+    uint32_t dutyValues2[5] = {0, 45, 66, 99, 45};
+    uint32_t dutyValues3[] = {0, 16, 24, 40, 55, 62, 74, 90};
 
     while(1)
     {
-#ifdef ENABLE_PWM
-        PwmSetValue(ePwmMotor, dutyValues[j], 0);
-        PwmSetValue(ePwmFrontLight, dutyValues2[j], 0);
-        PwmSetValue(ePwmBackLight, dutyValues3[j], 0);
-#endif
-
-#ifdef ENABLE_WAVE
-        DacPlayWaveForm("LAUGHREP", pcm1608s, sizeof(pcm1608s), INF_REP);
-#endif
-        sleep(16);
-        DacPlayWaveForm("LAUGHONE", pcm1608s, sizeof(pcm1608s), 0);
+        //MarklinDecoderSetSpeed(ePwmMotor, dutyValues3[j]);
+   
         DacBreakRepeatPlayback();
+        DacPlayWaveData("CHUG", trainchug1 + 44, sizeof(trainchug1)-45, INF_REP);
+        sleep(10);
+        DacPlayWaveData("CHUG", trainchug2 + 44, sizeof(trainchug2)-45, 3);        
+        DacBreakRepeatPlayback();
+        DacPlayWaveData("CHUG", trainchug3 + 44, sizeof(trainchug3)-45, 3);
+        DacPlayWaveData("CHUG", trainchug4 + 44, sizeof(trainchug4)-45, 3);
+        DacPlayWaveData("CHUG", trainchug5 + 44, sizeof(trainchug5)-45, 3);
+        DacPlayWaveData("CHUG", trainchug6 + 44, sizeof(trainchug6)-45, 3);
+        DacPlayWaveData("CHUG", trainchug7 + 44, sizeof(trainchug7)-45, 3);
+        DacPlayWaveData("CHUG", trainchug8 + 44, sizeof(trainchug8)-45, 3);
+        DacPlayWaveData("CHUG", trainchug9 + 44, sizeof(trainchug9)-45, 3);
+        DacPlayWaveData("CHUG", trainchug10 + 44, sizeof(trainchug10)-45, 3);
+        DacPlayWaveData("CHUG", trainchug11 + 44, sizeof(trainchug11)-45, 3);
+        DacPlayWaveData("CHUG", trainchug12 + 44, sizeof(trainchug12)-45, 3);
+        DacPlayWaveData("CHUG", trainchug13 + 44, sizeof(trainchug13)-45, 3);
+        DacPlayWaveData("CHUG", trainchug14 + 44, sizeof(trainchug14)-45, 3);
+        DacPlayWaveData("CHUG", trainchug15 + 44, sizeof(trainchug15)-45, 3);
 
-        sleep(32);
-    
+        sleep(60);
         j++;
 
-        if (j>4)
+        if (j>8)
             j=0;
     } 
 
     fflush(stdout);
     esp_restart();
 }
+
+

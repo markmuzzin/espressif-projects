@@ -10,8 +10,9 @@
 #include "pwm.h"
 #include "common.h"
 
-
-/* PWM channel common setup */
+/**********************************************/
+/*                DEFINES                     */
+/**********************************************/
 #define LEDC_TIMER              LEDC_TIMER_0
 #define LEDC_MODE               LEDC_LOW_SPEED_MODE
 #define LEDC_DUTY_RES           LEDC_TIMER_8_BIT
@@ -19,6 +20,9 @@
 #define PWM_DELTA_DELAY_MS      (400)
 
 
+/**********************************************/
+/*                TYPEDEFS                    */
+/**********************************************/
 typedef struct _pwmConfiguration_t {
     ledc_channel_config_t ledc_channel;
     uint32_t channel;
@@ -31,6 +35,20 @@ typedef struct _pwmConfiguration_t {
 } pwmConfiguration_t;
 
 
+/**********************************************/
+/*              VARIABLES                     */
+/**********************************************/
+static const char *TAG = "LOCO-PWM";
+
+static SemaphoreHandle_t gPwmMutex;
+
+static pwmConfiguration_t gPwmConfig[ePwmMaxDevices] = 
+{
+    { {0}, LEDC_CHANNEL_0, PWM_MOTOR, 100, 5, 0, 0, 0 },        /* ePwmMotor */
+    { {0}, LEDC_CHANNEL_1, PWM_LIGHT_FRONT, 100, 10, 0, 0, 0 }, /* ePwmFrontLight */
+    { {0}, LEDC_CHANNEL_2, PWM_LIGHT_REAR, 100, 10, 0, 0, 0 },  /* ePwmBackLight */
+};
+
 static const char gPwmDeviceString[][25] = 
 {
     "ePwmMotor",
@@ -39,17 +57,9 @@ static const char gPwmDeviceString[][25] =
 };
 
 
-static const char *TAG = "LOCO-PWM";
-
-static SemaphoreHandle_t gPwmMutex;
-static pwmConfiguration_t gPwmConfig[ePwmMaxDevices] = 
-{
-    { {0}, LEDC_CHANNEL_0, PWM_MOTOR, 100, 5, 0, 0, 0 },        /* ePwmMotor */
-    { {0}, LEDC_CHANNEL_1, PWM_LIGHT_FRONT, 100, 10, 0, 0, 0 }, /* ePwmFrontLight */
-    { {0}, LEDC_CHANNEL_2, PWM_LIGHT_REAR, 100, 10, 0, 0, 0 },  /* ePwmBackLight */
-};
-
-
+/**********************************************/
+/*              FUNCTIONS                     */
+/**********************************************/
 static void S_PwmProcessingTask(void *arg)
 {
     int32_t device = 0;

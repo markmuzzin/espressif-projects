@@ -7,31 +7,21 @@
 #include "driver/i2s.h"
 #include "dac.h"
 
+/**********************************************/
+/*                DEFINES                     */
+/**********************************************/
 #define I2S_DATA_MULTIPLIER               2
 #define I2S_MAX_BYTES_PER_DMA_WRITE       64
 #define I2S_MAX_ACTUAL_BYTES_PER_WRITE    (I2S_MAX_BYTES_PER_DMA_WRITE/I2S_DATA_MULTIPLIER)
 #define I2S_MAX_BUFFER_COUNT              32
-#define I2S_MAX_TASK_QUEUE                10
+#define I2S_MAX_TASK_QUEUE                25
+#define I2S_DEFAULT_SAMPLE_RATE           8000
+#define I2S_DEFAULT_SAMPLE_BITS           16
 
 
-typedef struct _WaveFileHeader_t
-{
-    char groupId[4];
-    uint32_t totalFileLength;
-    char wave[4];
-    char formatChunk[4];
-    uint32_t lengthOfFormatData;
-    uint16_t typeOfFormat;
-    uint16_t numChannels;
-    uint32_t sampleRate;
-    uint32_t bytesPerSecond;
-    uint16_t audioFormat;
-    uint16_t bitsPerSample;
-    char dataChunk[4];
-    uint32_t dataSize;
-} WaveFileHeader_t;
-
-
+/**********************************************/
+/*                TYPEDEFS                    */
+/**********************************************/
 typedef struct _QueueData_t_t 
 {
     char name[10];
@@ -41,13 +31,23 @@ typedef struct _QueueData_t_t
 } QueueData_t;
 
 
+/**********************************************/
+/*              VARIABLES                     */
+/**********************************************/
 static const char *TAG = "LOCO-DAC";
 
 static QueueHandle_t gI2sPlayTaskQueue = NULL;
+
 static QueueHandle_t gI2sEventQueue = NULL;
+
 static bool gStopWavePlayback = false;
+
 static bool gBreakRepeatPlayback = false;
 
+
+/**********************************************/
+/*              FUNCTIONS                     */
+/**********************************************/
 static void S_DacDumpWaveHeaderData(WaveFileHeader_t *header)
 {
     ESP_LOGI(TAG,"\tgroupId: %.4s", header->groupId);
@@ -72,8 +72,10 @@ static uint32_t S_DacScaleAndFormatWaveData(uint8_t* d_buff, uint8_t* s_buff, ui
 
     for (uint32_t i = 0; i < len; i+=4) 
     {
+        /* Add padding due to 8-bit internal DAC vs. 32bit DMA */
         for(uint32_t m=0; m<I2S_DATA_MULTIPLIER; m++)
         {
+            /* MSB bits for sample values to 8-bit DAC, scaled by 0x80 */
             d_buff[j++] = 0x80;
             d_buff[j++] = s_buff[i+1] + 0x80;
             d_buff[j++] = 0x80;
@@ -107,6 +109,8 @@ static void S_DacPlayTask(void *arg)
             /* Check if there is a WAV to play in the queue*/
             if (xQueueReceive(gI2sPlayTaskQueue, &waveData, 1))
             {
+                /* Reset break playback flag */
+                gBreakRepeatPlayback = false;
                 /* Set wave start playback flag to true */
                 waveStartPlayback = true;
                 /* Set wave playing flag to true */
@@ -218,64 +222,61 @@ static void S_DacPlayTask(void *arg)
 }
 
 
-static void S_DacSetWaveParameters(WaveFileHeader_t *header)
+void DacSetWaveParameters(uint8_t *buffer)
 {
-    static bool dacInitialized = false;
-    i2s_config_t i2sConfig= {};
+    WaveFileHeader_t *header = (WaveFileHeader_t *)buffer;
 
-    /* If the DAC is not initialized */
-    if(dacInitialized == false) 
-    {
-        /* Audio parameters */
-        i2sConfig.mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN;
-        i2sConfig.dma_buf_count         = I2S_MAX_BUFFER_COUNT;
-        i2sConfig.dma_buf_len           = I2S_MAX_BYTES_PER_DMA_WRITE;
-        i2sConfig.intr_alloc_flags      = ESP_INTR_FLAG_LEVEL1;
-        i2sConfig.communication_format  = I2S_COMM_FORMAT_STAND_MSB;
-        i2sConfig.channel_format        = I2S_CHANNEL_FMT_RIGHT_LEFT;
-        
-        i2sConfig.sample_rate           = header->sampleRate;
-        i2sConfig.bits_per_sample       = (i2s_bits_per_sample_t)header->bitsPerSample;
-        i2sConfig.bits_per_chan         = (i2s_bits_per_chan_t)header->bitsPerSample;
+    /* Stop I2S interface */
+    i2s_stop(I2S_NUM_0);
 
-        /* Set DAC initialization flag */
-        dacInitialized = true;
+    /* Set WAV parameters */
+    i2s_set_clk(I2S_NUM_0, header->sampleRate, header->bitsPerSample, header->numChannels);
 
-        /* Install I2S driver */
-        ESP_ERROR_CHECK(i2s_driver_install(I2S_NUM_0, &i2sConfig, 1, &gI2sEventQueue));
-        
-        /* Disable I2S output pins */
-        ESP_ERROR_CHECK(i2s_set_pin(I2S_NUM_0, NULL));
-	    ESP_ERROR_CHECK(i2s_set_dac_mode(I2S_DAC_CHANNEL_LEFT_EN));
- 
-        /* Create driver event queue */
-	    gI2sPlayTaskQueue = xQueueCreate(I2S_MAX_TASK_QUEUE, sizeof(QueueData_t));
-	    assert(gI2sPlayTaskQueue);
-
-        /* Create DAC play task, priority 4 */
-	    BaseType_t result = xTaskCreate(S_DacPlayTask, "I2S Task", 2048, NULL, 4, NULL);
-	    assert(result == pdPASS);
-    }
+    /* Start I2S interface */
+    i2s_start(I2S_NUM_0);
 }
 
 
-void DacPlayWaveForm(const char *name, const uint8_t *buffer, size_t length, uint8_t repeat)
+void DacInitialize(void)
+{
+    i2s_config_t i2sConfig= {};
+
+    /* Audio parameters */
+    i2sConfig.mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN;
+    i2sConfig.dma_buf_count         = I2S_MAX_BUFFER_COUNT;
+    i2sConfig.dma_buf_len           = I2S_MAX_BYTES_PER_DMA_WRITE;
+    i2sConfig.intr_alloc_flags      = ESP_INTR_FLAG_LEVEL1;
+    i2sConfig.communication_format  = I2S_COMM_FORMAT_STAND_MSB;
+    i2sConfig.channel_format        = I2S_CHANNEL_FMT_RIGHT_LEFT;
+    i2sConfig.sample_rate           = I2S_DEFAULT_SAMPLE_RATE;
+    i2sConfig.bits_per_sample       = I2S_DEFAULT_SAMPLE_BITS;
+
+    /* Install I2S driver */
+    ESP_ERROR_CHECK(i2s_driver_install(I2S_NUM_0, &i2sConfig, 1, &gI2sEventQueue));
+    
+    /* Disable I2S output pins */
+    ESP_ERROR_CHECK(i2s_set_pin(I2S_NUM_0, NULL));
+    ESP_ERROR_CHECK(i2s_set_dac_mode(I2S_DAC_CHANNEL_LEFT_EN));
+
+    /* Create driver event queue */
+    gI2sPlayTaskQueue = xQueueCreate(I2S_MAX_TASK_QUEUE, sizeof(QueueData_t));
+    assert(gI2sPlayTaskQueue);
+
+    /* Create DAC play task, priority 4 */
+    BaseType_t result = xTaskCreate(S_DacPlayTask, "I2S Task", 2048, NULL, 4, NULL);
+    assert(result == pdPASS);
+}
+
+
+void DacPlayWaveData(const char *name, const uint8_t *buffer, size_t length, uint8_t repeat)
 {
 	QueueData_t waveData = {0};
-
-    WaveFileHeader_t *header = (WaveFileHeader_t *)buffer;
-   
-    /* Dump WAV header waveData */
-    //DacDumpWaveHeaderData(header);
-    
-    /* Setup audio parameters - This setup will only happen once since the assumption is that all WAVs will be the same format/sample rate */
-    S_DacSetWaveParameters(header);
 
     /* Set WAV playback settings */
     memcpy(waveData.name, name, sizeof(waveData.name));
     waveData.repeat = repeat; 
-    waveData.buffer = buffer + sizeof(WaveFileHeader_t);
-	waveData.length = length - sizeof(WaveFileHeader_t);
+    waveData.buffer = buffer;
+	waveData.length = length;
 
     /* Send WAV data to DAC play task */
     if(xQueueSend(gI2sPlayTaskQueue, &waveData, portMAX_DELAY) != pdPASS)
@@ -289,6 +290,7 @@ void DacStopWavePlayback(void)
 {
     gStopWavePlayback = true;
 }
+
 
 void DacBreakRepeatPlayback(void)
 {
