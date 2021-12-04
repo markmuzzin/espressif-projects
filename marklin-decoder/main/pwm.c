@@ -91,7 +91,7 @@ static void S_PwmProcessingTask(void *arg)
                 /* Set target duty cycle to current */
                 gPwmConfig[device].currentDutyCycle = gPwmConfig[device].targetDutyCycle;
 
-                ESP_LOGI(TAG,"[%s] Setting duty cycle: %s target: %02X current: %02X", __func__, gPwmDeviceString[device], gPwmConfig[device].targetDutyCycle, gPwmConfig[device].currentDutyCycle);
+                ESP_LOGI(TAG,"[%s] Setting duty cycle: %s target: %02XH current: %02XH", __func__, gPwmDeviceString[device], gPwmConfig[device].targetDutyCycle, gPwmConfig[device].currentDutyCycle);
 
                 /* Set and update duty cycle */
                 ledc_set_duty(gPwmConfig[device].ledc_channel.speed_mode, 
@@ -100,7 +100,10 @@ static void S_PwmProcessingTask(void *arg)
                     gPwmConfig[device].ledc_channel.channel);
                 
                 /* Notify the registered task of a duty cycle change */
-                xTaskNotify(notifyTask, (uint32_t)((gPwmConfig[device].currentDutyCycle * 100.0) / (pow(2,gPwmConfig[device].ledDutyRes) - 1)*(gPwmConfig[device].maxDutyCycle/100.0)), eSetValueWithOverwrite);
+                if (notifyTask != NULL)
+                {
+                    xTaskNotify(notifyTask, (uint32_t)((gPwmConfig[device].currentDutyCycle * 100.0) / maxDutyCycleCount), eSetValueWithOverwrite);
+                }
             }
 
             /* If the target duty cycle is greater than the current duty cycle */
@@ -127,7 +130,7 @@ static void S_PwmProcessingTask(void *arg)
                         gPwmConfig[device].currentDutyCycle += gPwmConfig[device].stepRate;
                     }
                 }
-                ESP_LOGI(TAG,"[%s] Raising duty cycle: %s target: %02X current %02X", __func__, gPwmDeviceString[device], gPwmConfig[device].targetDutyCycle, gPwmConfig[device].currentDutyCycle);
+                ESP_LOGI(TAG,"[%s] Raising duty cycle: %s target: %02XH current %02XH", __func__, gPwmDeviceString[device], gPwmConfig[device].targetDutyCycle, gPwmConfig[device].currentDutyCycle);
 
                 /* Set and update duty cycle */
                 ledc_set_duty(gPwmConfig[device].ledc_channel.speed_mode, 
@@ -136,7 +139,10 @@ static void S_PwmProcessingTask(void *arg)
                     gPwmConfig[device].ledc_channel.channel);
 
                 /* Notify the registered task of a duty cycle change */
-                xTaskNotify(notifyTask, (uint32_t)((gPwmConfig[device].currentDutyCycle * 100.0) / (pow(2,gPwmConfig[device].ledDutyRes) - 1)*(gPwmConfig[device].maxDutyCycle/100.0)), eSetValueWithOverwrite);
+                if (notifyTask != NULL)
+                {
+                    xTaskNotify(notifyTask, (uint32_t)((gPwmConfig[device].currentDutyCycle * 100.0) / maxDutyCycleCount), eSetValueWithOverwrite);
+                }
             } 
 
             /* If the target duty cycle is less than the current duty cycle */
@@ -164,7 +170,7 @@ static void S_PwmProcessingTask(void *arg)
                     }
 
                 }
-                ESP_LOGI(TAG,"[%s] Lowering duty cycle: %s target: %02X current %02X", __func__, gPwmDeviceString[device], gPwmConfig[device].targetDutyCycle, gPwmConfig[device].currentDutyCycle);
+                ESP_LOGI(TAG,"[%s] Lowering duty cycle: %s target: %02XH current %02XH", __func__, gPwmDeviceString[device], gPwmConfig[device].targetDutyCycle, gPwmConfig[device].currentDutyCycle);
 
                 /* Set and update duty cycle */
                 ledc_set_duty(gPwmConfig[device].ledc_channel.speed_mode, 
@@ -173,7 +179,10 @@ static void S_PwmProcessingTask(void *arg)
                     gPwmConfig[device].ledc_channel.channel);
 
                 /* Notify the registered task of a duty cycle change */
-                xTaskNotify(notifyTask, (uint32_t)((gPwmConfig[device].currentDutyCycle * 100.0) / (pow(2,gPwmConfig[device].ledDutyRes) - 1)*(gPwmConfig[device].maxDutyCycle/100.0)), eSetValueWithOverwrite);
+                if (notifyTask != NULL)
+                {
+                    xTaskNotify(notifyTask, (uint32_t)((gPwmConfig[device].currentDutyCycle * 100.0) / maxDutyCycleCount), eSetValueWithOverwrite);
+                }
             }
             else 
             {

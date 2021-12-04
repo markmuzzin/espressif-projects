@@ -35,6 +35,5 @@ void DacPlayWaveData(const char *name, const uint8_t* buffer, size_t length, uin
 void DacStopWavePlayback(void);
 void DacBreakRepeatPlayback(void);
 void DacSetWaveParameters(uint8_t *buffer);
-int DacGetMessagesWaiting(void);
 
 #endif

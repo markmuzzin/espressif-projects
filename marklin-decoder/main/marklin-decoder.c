@@ -11,9 +11,7 @@
 
 
 /* TODO List */
-/* - Create functions to map pwm setting to engine sound */
 /* - Mixing a second sound */
-/* - PWM separate freqencies per channel */
 
 
 static const char *TAG = "LOCO-MAIN";
@@ -90,8 +88,11 @@ static void MarklinDecoderInitialize(void)
     /* Start the PWM thread */
     if( pdPASS == xTaskCreate(S_MarklinSetEngineSoundTask, "S_MarklinSetEngineSoundTask", 8192, NULL, 4, &gEngineSoundTaskHandle))
     {
-        /* Initialize PWM */
-        PwmInitialize(gEngineSoundTaskHandle);
+        /* Initialize PWM - with engine sound */
+//        PwmInitialize(gEngineSoundTaskHandle);
+
+        /* Initialize PWM - with no engine sound */
+        PwmInitialize(NULL);
 
         /* Initialize DAC */
         DacInitialize();
@@ -109,6 +110,7 @@ static void MarklinDecoderInitialize(void)
 uint32_t dutyValuesEngine[]     = {50, 60, 70, 80, 90};
 uint32_t dutyValuesFrontLight[] = {0, 35, 65, 75, 85};
 uint32_t dutyValuesBackLight[]  = {0, 45, 66, 99, 45};
+
 void app_main()
 {
     uint32_t j = 0;
@@ -119,6 +121,7 @@ void app_main()
 
     while(1)
     {
+printf("setting %d %d\n", j, dutyValuesEngine[j]);
         if (j==0)
             PwmSetValue(ePwmEngine, dutyValuesEngine[j], 1);
         else
@@ -129,7 +132,7 @@ void app_main()
 
 
         j++;
-        if (j==sizeof(dutyValuesEngine))
+        if (j == sizeof(dutyValuesEngine)/sizeof(dutyValuesEngine[0]))
         {
             j=0;
         }
