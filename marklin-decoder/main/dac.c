@@ -117,7 +117,7 @@ static void S_DacPlayTask(void *arg)
                 wavePlaying = true;
                 /* Set total bytes written to 0 */
                 totalBytesWritten = 0;
-                ESP_LOGI(TAG, "[%s] start playback", waveData.name);
+                ESP_LOGI(TAG, "[%s] Start playback", waveData.name);
             }
             else
             {
@@ -128,7 +128,7 @@ static void S_DacPlayTask(void *arg)
                     clearTxBuffer = false;
                     /* Clear the TX I2S buffer */
                     ESP_ERROR_CHECK(i2s_zero_dma_buffer(I2S_NUM_0));
-                    ESP_LOGI(TAG, "[%s] clear I2S tx buffer", waveData.name);
+                    ESP_LOGI(TAG, "[%s] Clear I2S tx buffer", waveData.name);
                 }
             }
         }
@@ -170,7 +170,7 @@ static void S_DacPlayTask(void *arg)
                         gBreakRepeatPlayback = false;
                         /* Force the repeat to zero */
                         waveData.repeat = 0;
-                        ESP_LOGI(TAG,"[%s] break playback", waveData.name);
+                        ESP_LOGI(TAG,"[%s] Break playback", waveData.name);
                     }
 
                     /* If this was this a request to stop playback */
@@ -186,7 +186,7 @@ static void S_DacPlayTask(void *arg)
                         gStopWavePlayback = false;
                         /* Set flag to clear the DMA Tx buffer */
                         clearTxBuffer = true;
-                        ESP_LOGI(TAG,"[%s] stop playback", waveData.name);
+                        ESP_LOGI(TAG,"[%s] Stop playback", waveData.name);
                     }
                     else
                     {
@@ -203,13 +203,13 @@ static void S_DacPlayTask(void *arg)
                             waveStartPlayback = true;
                             /* Set wave playing flag to true */
                             wavePlaying = true;
-                            ESP_LOGI(TAG,"[%s] repeat count %d", waveData.name, waveData.repeat+1);
+                            ESP_LOGI(TAG,"[%s] Repeat count %d", waveData.name, waveData.repeat+1);
                         } 
                         else
                         {   
                             /* Set flag to clear the DMA Tx buffer */
                             clearTxBuffer = true;
-                            ESP_LOGI(TAG,"[%s] done playback", waveData.name);
+                            ESP_LOGI(TAG,"[%s] Done playback", waveData.name);
                         }
                     }
                 }
@@ -297,3 +297,8 @@ void DacBreakRepeatPlayback(void)
     gBreakRepeatPlayback = true;
 }
 
+
+int DacGetMessagesWaiting(void)
+{
+    return uxQueueMessagesWaiting(gI2sPlayTaskQueue);
+}

@@ -10,7 +10,73 @@
 #include "sounds.h"
 
 
+/* TODO List */
+/* - Create functions to map pwm setting to engine sound */
+/* - Mixing a second sound */
+/* - PWM separate freqencies per channel */
+
+
 static const char *TAG = "LOCO-MAIN";
+
+
+typedef struct _EngineSound_t
+{
+    const uint8_t *wave;
+    uint32_t size;
+    uint8_t minDuty;
+    uint8_t maxDuty;   
+} EngineSound_t;
+
+
+static EngineSound_t sounds[] =
+{
+    {NULL,          0, 0, 49},
+    {trainchug1,    sizeof(trainchug1), 50, 59},
+    {trainchug2,    sizeof(trainchug2), 60, 69},
+    {trainchug3,    sizeof(trainchug3), 70, 79},
+    {trainchug4,    sizeof(trainchug4), 80, 89},
+    {trainchug5,    sizeof(trainchug5), 90, 99},
+    {trainchug6,    sizeof(trainchug6), 100, 101},
+};
+
+
+static TaskHandle_t gEngineSoundTaskHandle = NULL;
+
+
+static void S_MarklinSetEngineSoundTask(void *arg)
+{
+    uint32_t dutyCycle = 0;
+    uint32_t i;
+
+    while(1)
+    {
+        /* Wait for PWM task notification */
+        ESP_LOGI(TAG,"[%s] Waiting on task notification", __func__);
+
+        xTaskNotifyWaitIndexed(0, 0x00, ULONG_MAX, &dutyCycle, portMAX_DELAY);
+
+        ESP_LOGI(TAG,"[%s] Engine cycle change: %d", __func__, dutyCycle);
+
+        for(i=0; i<sizeof(sounds)/sizeof(sounds[0]); i++)
+        {
+            if(dutyCycle >= sounds[i].minDuty && dutyCycle < sounds[i].maxDuty)
+            {
+                if(sounds[i].wave != NULL)
+                {
+                    ESP_LOGI(TAG,"[%s] Selected sound: %d size %d", __func__, i, sounds[i].size);
+                    DacBreakRepeatPlayback();
+                    DacPlayWaveData("CHUG", sounds[i].wave + sizeof(WaveFileHeader_t), sounds[i].size - sizeof(WaveFileHeader_t), INF_REP);
+                }
+                else
+                {
+                    ESP_LOGI(TAG,"[%s] Stop sound playback", __func__);
+                    DacStopWavePlayback();   
+                }
+                break;
+            }
+        }
+    }
+}
 
 
 static void MarklinDecoderInitialize(void)
@@ -18,17 +84,31 @@ static void MarklinDecoderInitialize(void)
     /* Print chip information */
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
-    printf("Marklin-Decoder ESP-NOW with %d CPU cores\n, ", chip_info.cores);
+    
+    ESP_LOGI(TAG,"[%s] Marklin-Decoder ESP-NOW with %d CPU cores", __func__, chip_info.cores);
 
-    /* Initialize PWM */
-    PwmInitialize();
-    /* Initialize DAC */
-    DacInitialize();
-    /* Set WAV parameters */    
-    //DacSetWaveParameters(trainchug1);
+    /* Start the PWM thread */
+    if( pdPASS == xTaskCreate(S_MarklinSetEngineSoundTask, "S_MarklinSetEngineSoundTask", 8192, NULL, 4, &gEngineSoundTaskHandle))
+    {
+        /* Initialize PWM */
+        PwmInitialize(gEngineSoundTaskHandle);
+
+        /* Initialize DAC */
+        DacInitialize();
+    }
+    else
+    {
+        /* Error starting PWM task */    
+        ESP_LOGE(TAG,"[%s] Error starting engine sound task", __func__);
+    }
 }
 
+/* Test App */
 
+/* Temp for testing */
+uint32_t dutyValuesEngine[]     = {50, 60, 70, 80, 90};
+uint32_t dutyValuesFrontLight[] = {0, 35, 65, 75, 85};
+uint32_t dutyValuesBackLight[]  = {0, 45, 66, 99, 45};
 void app_main()
 {
     uint32_t j = 0;
@@ -36,38 +116,23 @@ void app_main()
     /* Initialize modules */
     MarklinDecoderInitialize();
 
-    uint32_t dutyValues[5] = {0, 35, 65, 75, 85};
-    uint32_t dutyValues2[5] = {0, 45, 66, 99, 45};
-    uint32_t dutyValues3[] = {0, 16, 24, 40, 55, 62, 74, 90};
 
     while(1)
     {
-        //MarklinDecoderSetSpeed(ePwmMotor, dutyValues3[j]);
-   
-        DacBreakRepeatPlayback();
-        DacPlayWaveData("CHUG", trainchug1 + 44, sizeof(trainchug1)-45, INF_REP);
+        if (j==0)
+            PwmSetValue(ePwmEngine, dutyValuesEngine[j], 1);
+        else
+            PwmSetValue(ePwmEngine, dutyValuesEngine[j], 0);
+     
+//        MarklinSetEngineSound(dutyValuesEngine[j]);
         sleep(10);
-        DacPlayWaveData("CHUG", trainchug2 + 44, sizeof(trainchug2)-45, 3);        
-        DacBreakRepeatPlayback();
-        DacPlayWaveData("CHUG", trainchug3 + 44, sizeof(trainchug3)-45, 3);
-        DacPlayWaveData("CHUG", trainchug4 + 44, sizeof(trainchug4)-45, 3);
-        DacPlayWaveData("CHUG", trainchug5 + 44, sizeof(trainchug5)-45, 3);
-        DacPlayWaveData("CHUG", trainchug6 + 44, sizeof(trainchug6)-45, 3);
-        DacPlayWaveData("CHUG", trainchug7 + 44, sizeof(trainchug7)-45, 3);
-        DacPlayWaveData("CHUG", trainchug8 + 44, sizeof(trainchug8)-45, 3);
-        DacPlayWaveData("CHUG", trainchug9 + 44, sizeof(trainchug9)-45, 3);
-        DacPlayWaveData("CHUG", trainchug10 + 44, sizeof(trainchug10)-45, 3);
-        DacPlayWaveData("CHUG", trainchug11 + 44, sizeof(trainchug11)-45, 3);
-        DacPlayWaveData("CHUG", trainchug12 + 44, sizeof(trainchug12)-45, 3);
-        DacPlayWaveData("CHUG", trainchug13 + 44, sizeof(trainchug13)-45, 3);
-        DacPlayWaveData("CHUG", trainchug14 + 44, sizeof(trainchug14)-45, 3);
-        DacPlayWaveData("CHUG", trainchug15 + 44, sizeof(trainchug15)-45, 3);
 
-        sleep(60);
+
         j++;
-
-        if (j>8)
+        if (j==sizeof(dutyValuesEngine))
+        {
             j=0;
+        }
     } 
 
     fflush(stdout);

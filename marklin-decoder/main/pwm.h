@@ -6,7 +6,7 @@
 /**********************************************/
 typedef enum _ePwmDevice_t 
 {
-    ePwmMotor = 0,
+    ePwmEngine = 0,
     ePwmFrontLight,
     ePwmBackLight,
     ePwmMaxDevices
@@ -23,7 +23,8 @@ typedef enum _ePwmReturn_t
 /**********************************************/
 /*                 APIS                       */
 /**********************************************/
-ePwmReturn_t PwmInitialize(void);
-ePwmReturn_t PwmSetValue(ePwmDevice_t device, uint32_t dutyCycle, uint8_t immediate);
+ePwmReturn_t PwmInitialize(TaskHandle_t *taskNotifyHandle);
+ePwmReturn_t PwmSetValue(ePwmDevice_t device, uint32_t duty, uint8_t immediate);
+uint8_t PwmGetCurrentPwm(ePwmDevice_t device);
 
 #endif

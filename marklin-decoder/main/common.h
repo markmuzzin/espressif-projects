@@ -3,9 +3,9 @@
 
 
 /* GPIO Assignments */
-#define PWM_MOTOR               32
-#define PWM_LIGHT_FRONT         33
-#define PWM_LIGHT_REAR          27
+#define PWM_ENGINE              32
+#define PWM_LIGHT_FRONT         27
+#define PWM_LIGHT_REAR          14
 
 #define DAC_WAV_OUT             25
 
