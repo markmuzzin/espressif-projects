@@ -1,9 +1,10 @@
-#!/usr/bin/env python3
 import argparse, sys, re, os.path
 
 TEMPLATE = """
 #include <stdint.h>
 static const uint8_t %ITEMNAME%[] = {
+%CONTENT%
+};
 """
 
 parser = argparse.ArgumentParser(description="Process a binary file")

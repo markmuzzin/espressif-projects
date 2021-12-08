@@ -9,4 +9,5 @@
 
 #define DAC_WAV_OUT             25
 
+#define TASK_PRIORITY           (tskIDLE_PRIORITY+1)
 #endif

@@ -9,10 +9,7 @@
 #include "esp_log.h"
 #include "sounds.h"
 
-
-/* TODO List */
-/* - Mixing a second sound */
-
+#include "common.h"
 
 static const char *TAG = "LOCO-MAIN";
 
@@ -62,13 +59,13 @@ static void S_MarklinSetEngineSoundTask(void *arg)
                 if(sounds[i].wave != NULL)
                 {
                     ESP_LOGI(TAG,"[%s] Selected sound: %d size %d", __func__, i, sounds[i].size);
-                    DacBreakRepeatPlayback();
-                    DacPlayWaveData("CHUG", sounds[i].wave + sizeof(WaveFileHeader_t), sounds[i].size - sizeof(WaveFileHeader_t), INF_REP);
+                    DacBreakRepeatPlayback(0);
+                    DacPlayWaveData(0, "CHUG-CHUG", sounds[i].wave + sizeof(WaveFileHeader_t), sounds[i].size - sizeof(WaveFileHeader_t), INF_REP);
                 }
                 else
                 {
                     ESP_LOGI(TAG,"[%s] Stop sound playback", __func__);
-                    DacStopWavePlayback();   
+                    DacStopWavePlayback(0);   
                 }
                 break;
             }
@@ -86,13 +83,13 @@ static void MarklinDecoderInitialize(void)
     ESP_LOGI(TAG,"[%s] Marklin-Decoder ESP-NOW with %d CPU cores", __func__, chip_info.cores);
 
     /* Start the PWM thread */
-    if( pdPASS == xTaskCreate(S_MarklinSetEngineSoundTask, "S_MarklinSetEngineSoundTask", 8192, NULL, 4, &gEngineSoundTaskHandle))
+    if( pdPASS == xTaskCreate(S_MarklinSetEngineSoundTask, "S_MarklinSetEngineSoundTask", 8192, NULL, TASK_PRIORITY, &gEngineSoundTaskHandle))
     {
         /* Initialize PWM - with engine sound */
-//        PwmInitialize(gEngineSoundTaskHandle);
+        PwmInitialize(gEngineSoundTaskHandle);
 
         /* Initialize PWM - with no engine sound */
-        PwmInitialize(NULL);
+//        PwmInitialize(NULL);
 
         /* Initialize DAC */
         DacInitialize();
@@ -121,15 +118,21 @@ void app_main()
 
     while(1)
     {
-printf("setting %d %d\n", j, dutyValuesEngine[j]);
+
         if (j==0)
-            PwmSetValue(ePwmEngine, dutyValuesEngine[j], 1);
+        {
+            PwmSetValue(ePwmEngine, 55, 1);
+        }        
         else
+        {
             PwmSetValue(ePwmEngine, dutyValuesEngine[j], 0);
-     
-//        MarklinSetEngineSound(dutyValuesEngine[j]);
+            DacPlayWaveData(1, "WHISTLE", whistle + sizeof(WaveFileHeader_t), sizeof(whistle) - sizeof(WaveFileHeader_t), 2);
+        }
         sleep(10);
 
+        //PwmSetValue(ePwmEngine, 0, 1);
+        //sleep(3);
+        
 
         j++;
         if (j == sizeof(dutyValuesEngine)/sizeof(dutyValuesEngine[0]))

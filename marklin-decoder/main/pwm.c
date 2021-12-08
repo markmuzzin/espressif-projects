@@ -13,11 +13,7 @@
 /**********************************************/
 /*                DEFINES                     */
 /**********************************************/
-//#define LEDC_TIMER              LEDC_TIMER_0
-//#define LEDC_MODE               LEDC_LOW_SPEED_MODE
-//#define LEDC_DUTY_RES           LEDC_TIMER_8_BIT
-//#define LEDC_FREQUENCY          (60)
-#define PWM_DELTA_DELAY_MS      (500)
+#define PWM_DELTA_DELAY_MS      (250)
 
 
 /**********************************************/
@@ -71,6 +67,8 @@ static void S_PwmProcessingTask(void *arg)
     uint32_t maxDutyCycleCount = 0;
 
     TaskHandle_t *notifyTask = (TaskHandle_t*)arg;
+
+    ESP_LOGI(TAG,"Starting PWM Task");
 
     while(1)
     {
@@ -202,7 +200,6 @@ static void S_PwmProcessingTask(void *arg)
 
 uint8_t PwmGetCurrentPwm(ePwmDevice_t device)
 {
-//    return gPwmConfig[device].currentDutyCycle;
     return gPwmConfig[device].duty;
 }
 
@@ -253,7 +250,7 @@ ePwmReturn_t PwmInitialize(TaskHandle_t *taskNotifyHandle)
     if ( ePwmSuccess == ret )
     {
         /* Start the PWM task */
-        if( pdPASS != xTaskCreate(S_PwmProcessingTask, "S_PwmProcessingTask", 8192, (void*)taskNotifyHandle, 4, NULL))
+        if( pdPASS != xTaskCreate(S_PwmProcessingTask, "S_PwmProcessingTask", 8192, (void*)taskNotifyHandle, TASK_PRIORITY, NULL))
         {
             ESP_LOGE(TAG,"[%s] Error starting PWM task", __func__);
             ret = ePwmFail;
@@ -290,9 +287,4 @@ ePwmReturn_t PwmSetValue(ePwmDevice_t device, uint32_t dutyCycle, uint8_t immedi
     
     return ret;
 }
-
-
-
-
-
 

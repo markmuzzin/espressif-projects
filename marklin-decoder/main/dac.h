@@ -31,9 +31,9 @@ typedef struct _WaveFileHeader_t
 /*                 APIS                       */
 /**********************************************/
 void DacInitialize(void);
-void DacPlayWaveData(const char *name, const uint8_t* buffer, size_t length, uint8_t repeat);
-void DacStopWavePlayback(void);
-void DacBreakRepeatPlayback(void);
+void DacPlayWaveData(uint8_t channel, const char *name, const uint8_t* buffer, size_t length, uint8_t repeat);
+void DacStopWavePlayback(uint8_t channel);
+void DacBreakRepeatPlayback(uint8_t channel);
 void DacSetWaveParameters(uint8_t *buffer);
 
 #endif
