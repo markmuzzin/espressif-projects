@@ -10,6 +10,6 @@ A collection of esp32 projects
     <li> Interal DAC for engine, horn sounds<br />
     </td>
     <td>
-    <img src="https://user-images.githubusercontent.com/81455676/145151097-2fbf37ce-f5d8-4a68-b609-cf1f1ecc1de8.jpg" align="right" height="384" width="512" >
+    <img src="https://user-images.githubusercontent.com/81455676/145683326-7061b841-9db5-48e9-b330-4e0eac02ef67.jpg" align="right" height="384" width="512" >
     </td>
   </tr>
