@@ -20,6 +20,7 @@
 #define I2S_MAX_TASK_QUEUE                25
 #define I2S_DEFAULT_SAMPLE_RATE           8000
 #define I2S_DEFAULT_SAMPLE_BITS           16
+#define I2S_AUDIO_ZERO_OFFSET             0x80
 
 
 /**********************************************/
@@ -84,10 +85,10 @@ static uint32_t S_DacScaleAndFormatWaveData(uint8_t* d_buff, uint8_t* s_buff, ui
         for(uint32_t m=0; m<I2S_DATA_MULTIPLIER; m++)
         {
             /* MSB bits for sample values to 8-bit DAC, scaled by 0x80 */
-            d_buff[j++] = 0x80;
-            d_buff[j++] = s_buff[i+1] + 0x80;
-            d_buff[j++] = 0x80;
-            d_buff[j++] = s_buff[i+3] + 0x80;
+            d_buff[j++] = I2S_AUDIO_ZERO_OFFSET;
+            d_buff[j++] = s_buff[i+1] + I2S_AUDIO_ZERO_OFFSET;
+            d_buff[j++] = I2S_AUDIO_ZERO_OFFSET;
+            d_buff[j++] = s_buff[i+3] + I2S_AUDIO_ZERO_OFFSET;
        }
     }
 
@@ -140,6 +141,7 @@ static void S_DacWriteToI2sTask(void *arg)
                 /* For the size of the smaller buffer, mix the data from the smaller buffer to the larger one (50/50) */
                 for(mixBytes=0;mixBytes<i2sByteBuffer[smallerBuffer].length;mixBytes+=4)
                 {
+                    /* Mix 50/50, then offset by 0x80 to scale the sound to the middle of the voltage range */
                     i2sByteBuffer[largerBuffer].buffer[mixBytes+1] = (i2sByteBuffer[largerBuffer].buffer[mixBytes+1]>>1)+(i2sByteBuffer[smallerBuffer].buffer[mixBytes+1]>>1);
                     i2sByteBuffer[largerBuffer].buffer[mixBytes+3] = (i2sByteBuffer[largerBuffer].buffer[mixBytes+3]>>1)+(i2sByteBuffer[smallerBuffer].buffer[mixBytes+3]>>1);
                 }
@@ -147,11 +149,21 @@ static void S_DacWriteToI2sTask(void *arg)
             /* If only channel 1 has data */
             else 
             {
+                /* By default, largeBuffer is 0, so check if buffer 1 is larger */
                 if(queueRec[1] == pdTRUE)
                 {
                    /* Set channel 1 to the large buffer */ 
                    largerBuffer = 1;
                 }
+
+                /* For the size of the larger buffer, reduce the volume to match if we were mixing */
+                for(mixBytes=0;mixBytes<i2sByteBuffer[largerBuffer].length;mixBytes+=4)
+                {
+                    /* Divide by 2, then offset by 0x80 to scale the sound to the middle of the voltage range */
+                   i2sByteBuffer[largerBuffer].buffer[mixBytes+1] = ((i2sByteBuffer[largerBuffer].buffer[mixBytes+1]-I2S_AUDIO_ZERO_OFFSET)>>1) + I2S_AUDIO_ZERO_OFFSET;
+                   i2sByteBuffer[largerBuffer].buffer[mixBytes+3] = ((i2sByteBuffer[largerBuffer].buffer[mixBytes+3]-I2S_AUDIO_ZERO_OFFSET)>>1) + I2S_AUDIO_ZERO_OFFSET;
+                }
+
             }
   
             do
@@ -358,7 +370,10 @@ void DacInitialize(void)
     
     /* Disable I2S output pins */
     ESP_ERROR_CHECK(i2s_set_pin(I2S_DAC_CHANNEL, NULL));
-    ESP_ERROR_CHECK(i2s_set_dac_mode(I2S_DAC_CHANNEL_LEFT_EN));
+    //ESP_ERROR_CHECK(i2s_set_dac_mode(I2S_DAC_CHANNEL_LEFT_EN));
+
+    ESP_ERROR_CHECK(i2s_set_dac_mode(I2S_DAC_CHANNEL_BOTH_EN));
+ 
 
     for(channel=0;channel<I2S_MIXING_CHANNELS;channel++)
     {
@@ -391,10 +406,19 @@ void DacPlayWaveData(uint8_t channel, const char *name, const uint8_t *buffer, s
     waveData.buffer = buffer;
 	waveData.length = length;
 
+    if(repeat == INF_REP)
+    {
+        ESP_LOGI(TAG,"[%s] Queuing %s on channel %d rep: INF_REP", __func__, name, channel);
+    }
+    else
+    {
+        ESP_LOGI(TAG,"[%s] Queuing %s on channel %d rep: %d", __func__, name, channel, repeat);
+    }
+
     /* Send WAV data to DAC play task */
     if(xQueueSend(gI2sPlayTaskQueue[channel], &waveData, portMAX_DELAY) != pdPASS)
     {
-        ESP_LOGI(TAG,"[%s] PlayTask Queue is full", __func__);
+        ESP_LOGE(TAG,"[%s] PlayTask Queue is full", __func__);
     }
 }
 

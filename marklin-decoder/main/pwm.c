@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <math.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -78,7 +77,7 @@ static void S_PwmProcessingTask(void *arg)
         for(device=0; device<ePwmMaxDevices; device++)
         {
             /* Convert duty cycle to the duty cycle count */
-            maxDutyCycleCount = (uint32_t)( (pow(2,gPwmConfig[device].ledDutyRes) - 1) * (gPwmConfig[device].maxDutyCycle/100.0));
+            maxDutyCycleCount = (uint32_t)(((1<<gPwmConfig[device].ledDutyRes) - 1) * (gPwmConfig[device].maxDutyCycle/100.0));
 
             /* Check if the setting needs to be immediate */
             if(gPwmConfig[device].immediate == 1)
@@ -100,7 +99,7 @@ static void S_PwmProcessingTask(void *arg)
                 /* Notify the registered task of a duty cycle change */
                 if (notifyTask != NULL)
                 {
-                    xTaskNotify(notifyTask, (uint32_t)((gPwmConfig[device].currentDutyCycle * 100.0) / maxDutyCycleCount), eSetValueWithOverwrite);
+                    xTaskNotify(notifyTask, (uint32_t)((gPwmConfig[device].currentDutyCycle * 100.0) / maxDutyCycleCount + 0.5), eSetValueWithOverwrite);
                 }
             }
 
@@ -139,7 +138,7 @@ static void S_PwmProcessingTask(void *arg)
                 /* Notify the registered task of a duty cycle change */
                 if (notifyTask != NULL)
                 {
-                    xTaskNotify(notifyTask, (uint32_t)((gPwmConfig[device].currentDutyCycle * 100.0) / maxDutyCycleCount), eSetValueWithOverwrite);
+                    xTaskNotify(notifyTask, (uint32_t)((gPwmConfig[device].currentDutyCycle * 100.0) / maxDutyCycleCount + 0.5), eSetValueWithOverwrite);
                 }
             } 
 
@@ -179,7 +178,7 @@ static void S_PwmProcessingTask(void *arg)
                 /* Notify the registered task of a duty cycle change */
                 if (notifyTask != NULL)
                 {
-                    xTaskNotify(notifyTask, (uint32_t)((gPwmConfig[device].currentDutyCycle * 100.0) / maxDutyCycleCount), eSetValueWithOverwrite);
+                    xTaskNotify(notifyTask, (uint32_t)((gPwmConfig[device].currentDutyCycle * 100.0) / maxDutyCycleCount + 0.5), eSetValueWithOverwrite);
                 }
             }
             else 
@@ -281,7 +280,7 @@ ePwmReturn_t PwmSetValue(ePwmDevice_t device, uint32_t dutyCycle, uint8_t immedi
         xSemaphoreTake(gPwmMutex, portMAX_DELAY);
         gPwmConfig[device].immediate = immediate;
         gPwmConfig[device].duty = dutyCycle;
-        gPwmConfig[device].targetDutyCycle = (uint32_t)((pow(2,gPwmConfig[device].ledDutyRes) - 1) * ((gPwmConfig[device].maxDutyCycle/100.0) * dutyCycle) / 100.0);
+        gPwmConfig[device].targetDutyCycle = (uint32_t)(((1<<gPwmConfig[device].ledDutyRes) - 1) * ((gPwmConfig[device].maxDutyCycle/100.0) * dutyCycle) / 100.0);
         xSemaphoreGive(gPwmMutex);
     }
     

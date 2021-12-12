@@ -118,21 +118,8 @@ void app_main()
 
     while(1)
     {
-
-        if (j==0)
-        {
-            PwmSetValue(ePwmEngine, 55, 1);
-        }        
-        else
-        {
-            PwmSetValue(ePwmEngine, dutyValuesEngine[j], 0);
-            DacPlayWaveData(1, "WHISTLE", whistle + sizeof(WaveFileHeader_t), sizeof(whistle) - sizeof(WaveFileHeader_t), 2);
-        }
-        sleep(10);
-
-        //PwmSetValue(ePwmEngine, 0, 1);
-        //sleep(3);
-        
+        PwmSetValue(ePwmEngine, dutyValuesEngine[j], 1);
+        DacPlayWaveData(1, "WHISTLE", whistle + sizeof(WaveFileHeader_t), sizeof(whistle) - sizeof(WaveFileHeader_t), 2);
 
         j++;
         if (j == sizeof(dutyValuesEngine)/sizeof(dutyValuesEngine[0]))
